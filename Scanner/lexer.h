@@ -6,7 +6,9 @@ enum TOKEN_TYPE
     AT,
     CASE,
     CLASS,
+    COMMA,
     COLON,
+    DIVISION,
     DOT,
     EQUALS,
     ELSE,
@@ -30,9 +32,11 @@ enum TOKEN_TYPE
     LPAREN,
     LTHAN,
     MINUS,
+    MULTI,
     NEW,
     NOT,
     OF,
+    PLUS,
     POOL,
     RARROW,
     RBRACKET,
@@ -45,6 +49,13 @@ enum TOKEN_TYPE
     WHILE
 };
 
-void lex(FILE *source_file);
+struct LexicalToken
+{
+    char *token_literal;
+    enum TOKEN_TYPE type;
+    int program_line;
+};
+
+struct LexicalToken **lex(FILE *source_file);
 
 #endif

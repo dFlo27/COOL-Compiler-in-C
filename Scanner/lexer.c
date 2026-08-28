@@ -1,81 +1,91 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "lexer.h";
+#include <string.h>
+#include "lexer.h"
 
-#define INT_MAX 2147483647
-#define INT_MIN (-2147483648)
-#define INITIAL_STRING_LENGTH 8
 #define INITIAL_LIST_LENGTH 8
 
-struct String
+struct ArrayList
 {
-    char *s;
-    int length;
-    int size;
+    void *array;
+    size_t length;
+    size_t size;
+    size_t element_size;
 };
 
-struct LexicalToken
+struct LexicalToken *create_token(int program_line, enum TOKEN_TYPE type)
 {
-    char *token_literal;
-    enum TOKEN_TYPE type;
-    int program_line;
-};
-
-void initialize_token(struct LexicalToken *t, int program_line, enum TOKEN_TYPE type)
-{
+    struct LexicalToken *t = malloc(sizeof(struct LexicalToken));
+    if (t == NULL)
+    {
+        printf("Malloc failed to allocate space\n");
+        /* Change Number */ exit(1);
+    }
     t->program_line = program_line;
     t->token_literal = NULL;
     t->type = type;
+    return t;
 }
 
-void initialize_string(struct String *str)
+void initialize_list(struct ArrayList *list, size_t element_size)
 {
-    str->length = 0;
-    str->s = malloc(INITIAL_STRING_LENGTH * sizeof(char));
-    str->size = INITIAL_STRING_LENGTH;
-    str->s[0] = '\0';
-}
-
-void append_char(struct String *str, char c)
-{
-    if (str->length == str->size - 1)
+    list->array = malloc(INITIAL_LIST_LENGTH * element_size);
+    if (list->array == NULL)
     {
-        str->size *= 2;
-        str->s = realloc(str->s, str->size * sizeof(char));
-        if (str->s == NULL)
+        printf("Malloc failed to allocate space\n");
+        /* Change Number */ exit(1);
+    }
+    list->length = 0;
+    list->size = INITIAL_LIST_LENGTH;
+    list->element_size = element_size;
+}
+
+void realloc_list(struct ArrayList *list, size_t new_size)
+{
+    void *new_loc;
+    size_t list_byte_length = new_size * list->element_size;
+    list->size = new_size;
+
+    new_loc = realloc(list->array, list_byte_length);
+    if (new_loc == NULL)
+    {
+        new_loc = malloc(list_byte_length);
+        if (new_loc == NULL)
         {
-            printf("Ran out of memory allocating a new character\n");
-            /*Change Number*/ exit(1);
+            printf("Malloc failed to allocate space\n");
+            /* Change Number */ exit(1);
         }
+        memcpy(new_loc, list->array, list_byte_length);
+        free(list->array);
     }
-    str->s[str->length++] = c;
-    str->s[str->length] = '\0';
+    list->array = new_loc;
 }
 
-// Checks if two strings are equal. Assumes both strings are same length because I can assume so.
-int str_equals(const char *str1, const char *str2)
+void append_list(struct ArrayList *list, void *element)
 {
-    int index;
-    char c;
-    for (index = 0; str1[index] != '\0'; index++)
-    {
-        if (str1[index] != str2[index])
-            return 0;
-    }
-    return 1;
-};
+    if (list->length == list->size)
+        realloc_list(list, list->size * 2);
+    memcpy(list->array + list->length * list->element_size, &element, list->element_size);
+    list->length++;
+}
 
-struct LexicalToken *lex(FILE *source)
+int str_equal(const char *str1, const char *str2) {
+    int i;
+    for (i = 0; str1[i] == str2[i] && str1[i] != '\0'; i++);
+    return str1[i] == str2[i];
+}
+
+struct LexicalToken **lex(FILE *source)
 {
-    int c, list_length, list_size, program_line;
-    struct LexicalToken **token_list;
+    void *temp;
+    int c, program_line;
+    struct ArrayList token_list;
     struct LexicalToken *token;
-    struct String new_string;
+    struct ArrayList new_string;
 
-    token_list = malloc(INITIAL_LIST_LENGTH * sizeof(struct LexicalToken *));
-    list_size = INITIAL_LIST_LENGTH;
-    list_size = 0;
+    // Program File starts at line 1
     program_line = 1;
+    initialize_list(&token_list, sizeof(struct LexicalToken *));
 
     while ((c = fgetc(source)) != EOF)
     {
@@ -96,140 +106,138 @@ struct LexicalToken *lex(FILE *source)
 
         // String Constant
         case '\"':
-            initialize_token((token = malloc(sizeof(struct LexicalToken))), program_line, STRING);
-            append_token(token_list, token);
-            initialize_string(&new_string);
+            token = create_token(program_line, STRING);
+            append_list(&token_list, token);
+            initialize_list(&new_string, sizeof(char));
 
-            while ((c = fgetc(source)) != "\"")
+            while ((c = fgetc(source)) != '\"')
             {
-                if (c == 0 || c == EOF)
+                switch (c)
                 {
-                    printf("ERROR: %d: Lexer: missing \" character");
+                case '\0':
+                case '\n':
+                case EOF:
                     /* Change Number */ exit(1);
+                    break;
+                case '\\':
+                    append_list(&new_string, (void *)(long long){c});
+                    c = fgetc(source);
+                    if (c == '\"')
+                        append_list(&new_string, (void *)(long long){c});
+                    else
+                        ungetc(c, source);
+                    break;
+                default:
+                    append_list(&new_string, (void *)(long long){c});
                 }
-                append_char(&new_string, c);
             }
-            token->token_literal = new_string.s;
+            append_list(&new_string, '\0');
+            realloc_list(&new_string, new_string.length);
+            token->token_literal = (char *)new_string.array;
             break;
 
         // Left Parenthesis Symbol
         case '(':
-            initialize_token((token = malloc(sizeof(struct LexicalToken))), program_line, LPAREN);
-            append_token(token_list, token);
-            // Comment Case 
+            // Comment Case
             if ((c = fgetc(source)) == '*')
             {
-                while ((c = fgetc(source)) != EOF )
+                while ((c = fgetc(source)) != EOF)
                 {
                     if (c == '*' && (c = fgetc(source)) == ')')
                         break;
                     if (c == '\n')
                         program_line++;
-                    
                 }
                 if (c == EOF)
                 {
-                    printf("ERROR %d: Lexer: no terminating ", program_line);
+                    printf("ERROR %d: Lexer: comment does not terminate\n", program_line);
                     /* Change Number */ exit(1);
                 }
             }
             else
+            {
                 ungetc(c, source);
+                token = create_token(program_line, LPAREN);
+                append_list(&token_list, token);
+            }
             break;
 
         // Right Parenthesis Symbol
         case ')':
-            initialize_token((token = malloc(sizeof(struct LexicalToken))), program_line, RPAREN);
-            append_token(token_list, token);
+            token = create_token(program_line, RPAREN);
+            append_list(&token_list, token);
             break;
 
         case '*':
-            initialize_token((token = malloc(sizeof(struct LexicalToken))), program_line, RPAREN);
-            append_token(token_list, token);
+            token = create_token(program_line, MULTI);
+            append_list(&token_list, token);
+            break;
 
+        case '+':
+            token = create_token(program_line, PLUS);
+            append_list(&token_list, token);
+            break;
+
+        case ',':
+            token = create_token(program_line, COMMA);
+            append_list(&token_list, token);
             break;
 
         case '-':
-            switch (c = fgetc(source))
+            if ((c = fgetc(source)) == '-')
+                while ((c = fgetc(source)) != '\n' && c != EOF)
+                    ;
+            else
             {
-            // Minus Operator
-            case ' ':
-                initialize_token((token = malloc(sizeof(struct LexicalToken))), program_line, MINUS);
-                append_token(token_list, token);
-                break;
-            // Comment, Ignore everything until EOF or newline
-            case '-':
-                while ((c = fgetc(source)) != '\n' || c != EOF)
-                    ungetc(c, source);
-                break;
-            // Negative Integer Constant
-            case '0' ... '9':
-                initialize_token((token = malloc(sizeof(struct LexicalToken))), program_line, INTEGER);
-                append_token(token_list, token);
-                initialize_string(&new_string);
-                append_char(&new_string, '-');
-                do
-                {
-                    if (new_string.length > 9 && strtol(new_string.s, NULL, 10) <= INT_MIN)
-                    {
-                        printf("ERROR: %d: Lexer: invalid integer %s\n", program_line, new_string.s);
-                        /* Change Number */ exit(1);
-                    }
-                    append_char(&new_string, c);
-                } while ((c = fgetc(source) >= '0' && c <= '9'));
-                ungetc(c, source);
-                token->token_literal = new_string.s;
-                break;
-            default:
-                initialize_string(&new_string);
-                append_char(&new_string, '-');
-                append_char(&new_string, c);
-                printf("ERROR: %d: Lexer: Invalid Syntax: %s\n", program_line, new_string.s);
-                /* Change Number */ exit(1);
+                token = create_token(program_line, MINUS);
+                append_list(&token_list, token);
             }
+            ungetc(c, source);
             break;
 
         // Dot Syntax
         case '.':
-            initialize_token((token = malloc(sizeof(struct LexicalToken))), program_line, DOT);
-            append_token(token_list, token);
+            token = create_token(program_line, DOT);
+            append_list(&token_list, token);
             break;
 
-        // Positive Integer Constant
-        case '0' ... '9':
-            initialize_token((token = malloc(sizeof(struct LexicalToken))), program_line, INTEGER);
-            append_token(token_list, token);
-            initialize_string(&new_string);
+        case '/':
+            token = create_token(program_line, DIVISION);
+            append_list(&token_list, token);
+            break;
 
+        // Integer Constant
+        case '0' ... '9':
+            token = create_token(program_line, INTEGER);
+            append_list(&token_list, token);
+            initialize_list(&new_string, sizeof(char));
             do
             {
-                if (new_string.length > 8 && strtol(new_string.s, NULL, 10) >= INT_MAX)
-                {
-                    printf("ERROR: %d: Lexer: invalid integer %s\n", program_line, new_string.s);
-                    /* Change Number */ exit(1);
-                }
-                append_char(&new_string, c);
+                append_list(&new_string, (void *)(long long){c});
             } while ((c = fgetc(source)) >= '0' && c <= '9');
-
+            append_list(&new_string, '\0');
+            if (new_string.length > 10 || (new_string.length == 10 && strtol(new_string.array, NULL, 10) > INT_MAX))
+            {
+                printf("ERROR %d: Lexer: invalid integer %s\n", program_line, new_string.array);
+            }
             ungetc(c, source);
-            token->token_literal = new_string.s;
+            realloc_list(&new_string, new_string.length);
+            token->token_literal = (char *)new_string.array;
             break;
 
         case ':':
-            initialize_token((token = malloc(sizeof(struct LexicalToken))), program_line, COLON);
-            append_token(token_list, token);
+            token = create_token(program_line, COLON);
+            append_list(&token_list, token);
             break;
 
         case ';':
-            initialize_token((token = malloc(sizeof(struct LexicalToken))), program_line, SEMICOLON);
-            append_token(token_list, token);
+            token = create_token(program_line, SEMICOLON);
+            append_list(&token_list, token);
             break;
 
         case '<':
-            token = malloc(sizeof(struct LexicalToken));
-            append(token_list, token);
-            token->program_line = program_line;
-            token->token_literal = NULL;
+            token = create_token(program_line, LTHAN);
+            append_list(&token_list, token);
             switch (c = fgetc(source))
             {
             // Left Arrow Symbol ( <- )
@@ -248,9 +256,9 @@ struct LexicalToken *lex(FILE *source)
             break;
 
         case '=':
-            initialize_token((token = malloc(sizeof(struct LexicalToken))), program_line, EQUALS);
-            append_token(token_list, token);
-            // Right Arrow Symbol ( => )
+            token = create_token(program_line, EQUALS);
+            append_list(&token_list, token);
+            // Right Arrow Symbol or Greater Than or Equal Sign ( => )
             if ((c = fgetc(source)) == '>')
                 token->type = RARROW;
             // Equals Symbol
@@ -259,8 +267,8 @@ struct LexicalToken *lex(FILE *source)
             break;
 
         case '>':
-            initialize_token((token = malloc(sizeof(struct LexicalToken))), program_line, GTHAN);
-            append_token(token_list, token);
+            token = create_token(program_line, GTHAN);
+            append_list(&token_list, token);
             // Greater Than or Equal Sign
             if ((c = fgetc(source)) == '=')
                 token->type = GEQUAL;
@@ -271,124 +279,133 @@ struct LexicalToken *lex(FILE *source)
 
         // AT Symbol
         case '@':
-            initialize_token((token = malloc(sizeof(struct LexicalToken))), program_line, AT);
-            append_token(token_list, token);
+            token = create_token(program_line, AT);
+            append_list(&token_list, token);
             break;
 
         // Type Symbols
         case 'A' ... 'Z':
-            initialize_token((token = malloc(sizeof(struct LexicalToken))), program_line, TYPE);
-            append_token(token_list, token);
-            initialize_string(&new_string);
+            token = create_token(program_line, TYPE);
+            append_list(&token_list, token);
+            initialize_list(&new_string, sizeof(char));
             do
             {
-                append_char(&new_string, c);
+                append_list(&new_string, (void *)(long long){c});
             } while (((c = fgetc(source)) >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_');
             ungetc(c, source);
-            token->token_literal = new_string.s;
+            append_list(&new_string, '\0');
+            realloc_list(&new_string, new_string.length);
+            token->token_literal = new_string.array;
             break;
 
         // Identifiers
         case 'a' ... 'z':
-            initialize_token((token = malloc(sizeof(struct LexicalToken))), program_line, IDENTIFIER);
-            append_token(token_list, token);
-            initialize_string(&new_string);
+            token = create_token(program_line, IDENTIFIER);
+            append_list(&token_list, token);
+            initialize_list(&new_string, sizeof(char));
             do
             {
-                append_char(&new_string, c);
+                append_list(&new_string, (void *)(long long){c});
             } while (((c = fgetc(source)) >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_');
             ungetc(c, source);
+            append_list(&new_string, '\0');
+            realloc_list(&new_string, new_string.length);
+            token->token_literal = (char *)new_string.array;
             // Check if identifier is actually a keyword
             switch (new_string.length)
             {
-            case 2:
-                if (new_string.s[0] == 'i')
+            case 3:
+                if (token->token_literal[0] == 'i')
                 {
-                    if (new_string.s[1] == 'f')
+                    if (token->token_literal[1] == 'f')
                         token->type = IF;
-                    else if (new_string.s[1] == 'n')
+                    else if (token->token_literal[1] == 'n')
                         token->type = IN;
                 }
-                else if (str_equals(new_string.s, "of"))
+                else if (str_equal(token->token_literal, "of"))
                     token->type = OF;
-                else if (str_equals(new_string.s, "fi"))
+                else if (str_equal(token->token_literal, "fi"))
                     token->type = FI;
                 break;
-            case 3:
-                if (str_equals(new_string.s, "let"))
+            case 4:
+                if (str_equal(token->token_literal, "let"))
                     token->type = LET;
-                else if (new_string.s[0] == 'n')
+                else if (token->token_literal[0] == 'n')
                 {
-                    if (str_equals(new_string.s[1], "ew"))
+                    if (str_equal(token->token_literal + sizeof(char), "ew"))
                         token->type = NEW;
-                    else if (str_equals(new_string.s[1], "ot"))
+                    else if (str_equal(token->token_literal + sizeof(char), "ot"))
                         token->type = NOT;
                 }
                 break;
-            case 4:
-                if (new_string.s[0] == 'c')
+            case 5:
+                if (str_equal(token->token_literal, "case"))
+                    token->type = CASE;
+                else if (token->token_literal[0] == 'e')
                 {
-                    if (str_equals(new_string.s[1], "ase"))
-                        token->type = CASE;
-                    else if (str_equals(new_string.s[1], "lass"))
-                        token->type = CLASS;
-                }
-                else if (new_string.s[0] == 'e')
-                {
-                    if (str_equals(new_string.s[1], "lse"))
+                    if (str_equal(token->token_literal + sizeof(char), "lse"))
                         token->type = ELSE;
-                    else if (str_equals(new_string.s[1], "sac"))
+                    else if (str_equal(token->token_literal + sizeof(char), "sac"))
                         token->type = ESAC;
                 }
-                else if (str_equals(new_string.s, "loop"))
+                else if (str_equal(token->token_literal, "loop"))
                     token->type = LOOP;
-                else if (new_string.s[0] == 't')
+                else if (token->token_literal[0] == 't')
                 {
-                    if ((new_string.s[1] == 'r' || new_string.s[1] == 'R') && (new_string.s[2] == 'u' || new_string.s[2] == 'U') && (new_string.s[3] == 'e' || new_string.s[3] == 'E'))
+                    if ((token->token_literal[1] == 'r' || token->token_literal[1] == 'R') &&
+                        (token->token_literal[2] == 'u' || token->token_literal[2] == 'U') &&
+                        (token->token_literal[3] == 'e' || token->token_literal[3] == 'E'))
                         token->type = TRUE;
-                    else if (str_equals(new_string.s[1], 'hen'))
+                    else if (str_equal(token->token_literal + sizeof(char), "hen"))
                         token->type = THEN;
                 }
-                else if (str_equals(new_string.s, "pool"))
+                else if (str_equal(token->token_literal, "pool"))
                     token->type = POOL;
                 break;
-            case 5:
-                if (new_string.s[0] == 'f' && (new_string.s[1] == 'a' || new_string.s[1] == 'A') && (new_string.s[2] == 'l' || new_string.s[2] == 'L') && (new_string.s[3] == 's' || new_string.s[3] == 'S') && (new_string.s[4] == 'e' || new_string.s[4] == 'E'))
+            case 6:
+                if (str_equal(token->token_literal, "class"))
+                    token->type = CLASS;
+                else if (token->token_literal[0] == 'f' &&
+                    (token->token_literal[1] == 'a' || token->token_literal[1] == 'A') &&
+                    (token->token_literal[2] == 'l' || token->token_literal[2] == 'L') &&
+                    (token->token_literal[3] == 's' || token->token_literal[3] == 'S') &&
+                    (token->token_literal[4] == 'e' || token->token_literal[4] == 'E'))
                     token->type = FALSE;
-                else if (str_equals(new_string.s, "while"))
+                else if (str_equal(token->token_literal, "while"))
                     token->type = WHILE;
                 break;
-            case 6:
-                if (str_equals(new_string.s, "isvoid"))
+            case 7:
+                if (str_equal(token->token_literal, "isvoid"))
                     token->type = ISVOID;
                 break;
-            case 8:
-                if (str_equals(new_string.s, "inherits"))
+            case 9:
+                if (str_equal(token->token_literal, "inherits"))
                     token->type = INHERITS;
             }
 
-            if (token->type == IDENTIFIER)
-                token->token_literal = new_string.s;
-            else
-                free(new_string.s);
+            if (token->type != IDENTIFIER)
+            {
+                free(token->token_literal);
+                token->token_literal = NULL;
+            }
             break;
 
         // Left Bracket Symbol
         case '{':
-            initialize_token((token = malloc(sizeof(struct LexicalToken))), program_line, LBRACKET);
-            append_token(token_list, token);
+            token = create_token(program_line, LBRACKET);
+            append_list(&token_list, token);
             break;
 
         // Right Bracket Symbol
         case '}':
-            initialize_token((token = malloc(sizeof(struct LexicalToken))), program_line, RBRACKET);
-            append_token(token_list, token);
+            token = create_token(program_line, RBRACKET);
+            append_list(&token_list, token);
             break;
 
         // Integer Complement Symbol
         case '~':
-            initialize_token((token = malloc(sizeof(struct LexicalToken))), program_line, INTCOMPLEMENT);
-            append_token(token_list, token);
+            token = create_token(program_line, INTCOMPLEMENT);
+            append_list(&token_list, token);
             break;
 
         // Unidentified Character
@@ -397,5 +414,7 @@ struct LexicalToken *lex(FILE *source)
             /* Change Numebr */ exit(1);
         }
     }
-    return token_list;
+    realloc_list(&token_list, token_list.length);
+    ((struct LexicalToken **)token_list.array)[token_list.length] = NULL;
+    return (struct LexicalToken **)token_list.array;
 };
