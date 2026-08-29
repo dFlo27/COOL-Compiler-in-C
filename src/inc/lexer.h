@@ -2,54 +2,7 @@
 #define lexer_h
 
 #include <stdio.h>
-
-enum TOKEN_TYPE
-{
-    AT,
-    CASE,
-    CLASS,
-    COMMA,
-    COLON,
-    DIVISION,
-    DOT,
-    EQUALS,
-    ELSE,
-    ESAC,
-    FALSE,
-    FI,
-    GEQUAL,
-    GTHAN,
-    IDENTIFIER,
-    IF,
-    IN,
-    INHERITS,
-    INTEGER,
-    INTCOMPLEMENT,
-    ISVOID,
-    LARROW,
-    LBRACKET,
-    LEQUAL,
-    LET,
-    LOOP,
-    LPAREN,
-    LTHAN,
-    MINUS,
-    MULTI,
-    NEW,
-    NOT,
-    OF,
-    PLUS,
-    POOL,
-    RARROW,
-    RBRACKET,
-    RPAREN,
-    SEMICOLON,
-    STRING,
-    THEN,
-    TRUE,
-    TYPE,
-    WHILE
-};
+#include "token.h"
 
 struct LexicalToken
 {

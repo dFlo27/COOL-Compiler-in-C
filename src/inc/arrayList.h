@@ -1,7 +1,7 @@
-#include <stdlib.h>
-
 #ifndef arraylist_h
 #define arraylist_h
+
+#include <stdlib.h>
 
 struct ArrayList
 {
