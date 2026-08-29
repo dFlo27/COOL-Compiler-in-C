@@ -95,7 +95,9 @@ int main(int argc, char *argv[])
         return 3;
     }
     rewind(input_file);
+    
     struct LexicalToken **output = lex(input_file);
+    
     if (flag == OUTPUT_LEX)
     {
         output_file = fopen("output.txt", "w");

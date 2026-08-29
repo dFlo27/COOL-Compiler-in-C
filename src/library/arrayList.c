@@ -1,4 +1,6 @@
-#include "ArrayList.h"
+#include <stdio.h>
+#include <string.h>
+#include "arrayList.h"
 
 #define INITIAL_LIST_LENGTH 8
 

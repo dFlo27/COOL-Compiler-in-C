@@ -1,6 +1,5 @@
-#include <stdio.h>
 #include "lexer.h"
-#include "ArrayList.h"
+#include "arrayList.h"
 
 #define MAX_INTEGER 2147483647
 

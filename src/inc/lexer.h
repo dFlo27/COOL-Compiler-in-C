@@ -1,6 +1,8 @@
 #ifndef lexer_h
 #define lexer_h
 
+#include <stdio.h>
+
 enum TOKEN_TYPE
 {
     AT,
