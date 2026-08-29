@@ -1,6 +1,0 @@
-#ifndef Scanner_h
-#define Scanner_h
-
-
-
-#endif
