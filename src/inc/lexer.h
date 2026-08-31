@@ -4,13 +4,13 @@
 #include <stdio.h>
 #include "token.h"
 
-struct LexicalToken
+struct Lexeme
 {
     char *token_literal;
-    enum TOKEN_TYPE type;
+    enum TOKEN_NAME token_name;
     int program_line;
 };
 
-struct LexicalToken **lex(FILE *source_file);
+struct ArrayList *lexer(FILE *source_file);
 
 #endif

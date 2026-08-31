@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "lexer.h"
+#include "print_lex.h"
 
 #define FLAG_COUNT 1
 
@@ -50,17 +51,13 @@ int main(int argc, char *argv[])
     }
     rewind(input_file);
     
-    struct LexicalToken **output = lex(input_file);
+    struct ArrayList *lex_array = lexer(input_file);
     
     if (flag == OUTPUT_LEX)
     {
-        output_file = fopen("output.txt", "w");
-        for (int i = 0; output[i] != NULL; i++)
-        {
-            fprintf(output_file, "%d\n%s\n", output[i]->program_line, token_to_string[output[i]->type]);
-            if (output[i]->token_literal != NULL)
-                fprintf(output_file, "%s\n", output[i]->token_literal);
-        }
+        print_lex(fopen("output.txt", "w"), lex_array);
+        return 0;
     }
+
     return 0;
 }

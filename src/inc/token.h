@@ -1,7 +1,7 @@
 #ifndef token_h
 #define token_h
 
-enum TOKEN_TYPE
+enum TOKEN_NAME
 {
     AT,
     CASE,
@@ -48,51 +48,5 @@ enum TOKEN_TYPE
     TYPE,
     WHILE
 };
-
-const char *const token_to_string[] = {
-    [AT] = "AT",
-    [CASE] = "CASE",
-    [CLASS] = "CLASS",
-    [COMMA] = "COMMA",
-    [COLON] = "COLON",
-    [DIVISION] = "DIVISION",
-    [DOT] = "DOT",
-    [EQUALS] = "EQUALS",
-    [ELSE] = "ELSE",
-    [ESAC] = "ESAC",
-    [FALSE] = "FALSE",
-    [FI] = "FI",
-    [GEQUAL] = "GEQUAL",
-    [GTHAN] = "GTHAN",
-    [IDENTIFIER] = "IDENTIFIER",
-    [IF] = "IF",
-    [IN] = "IN",
-    [INHERITS] = "INHERITS",
-    [INTEGER] = "INTEGER",
-    [INTCOMPLEMENT] = "INTCOMPLEMENT",
-    [ISVOID] = "ISVOID",
-    [LARROW] = "LARROW",
-    [LBRACKET] = "LBRACKET",
-    [LEQUAL] = "LEQUAL",
-    [LET] = "LET",
-    [LOOP] = "LOOP",
-    [LPAREN] = "LPAREN",
-    [LTHAN] = "LTHAN",
-    [MINUS] = "MINUS",
-    [MULTI] = "MULTI",
-    [NEW] = "NEW",
-    [NOT] = "NOT",
-    [OF] = "OF",
-    [PLUS] = "PLUS",
-    [POOL] = "POOL",
-    [RARROW] = "RARROW",
-    [RBRACKET] = "RBRACKET",
-    [RPAREN] = "RPAREN",
-    [SEMICOLON] = "SEMICOLON",
-    [STRING] = "STRING",
-    [THEN] = "THEN",
-    [TRUE] = "TRUE",
-    [TYPE] = "TYPE",
-    [WHILE] = "WHILE"};
 
 #endif
