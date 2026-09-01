@@ -4,71 +4,118 @@
 #include "lexer.h"
 #include "array_list.h"
 
-enum EXPR_NAME
+enum EXPRESSION
 {
     ASSIGNMENT,
     METHODCALL,
     FUNCTIONCALL,
-    IFSTATEMENT
+    IFSTATEMENT,
+    WHILELOOP,
+    BLOCK,
+    LETBLOCK,
+    CASEBLOCK,
+    NEWOBJECT,
+    BINARY,
+    UNARY
 };
 
 struct Class
 {
-    char *class_type;
-    char *inherits_from;
+    struct TokenInfo *type;
+    struct TokenInfo *inherits;
     struct ArrayList *features;
-    int program_line;
 };
 
-struct Features
+struct Feature
 {
-    char *feature_name;
+    struct TokenInfo *name;
     struct ArrayList *formals;
-    char *return_type;
+    struct TokenInfo *return_type;
     struct ArrayList *expressions;
-    int program_line;
 };
 
 struct Formal
 {
-    char *identifier;
-    char *formal_type;
-    int program_line;
+    struct TokenInfo *identifier;
+    struct TokenInfo *type;
 };
 
 struct Expression
 {
-    program_line;
-    enum EXPR_NAME name;
+    enum EXPRESSION name;
     void *data;
+    int program_line;
 };
 
 struct Assignment
 {
-    char *left_operand;
+    struct TokenInfo *left_operand;
     struct Expression *right_operand;
 };
 
 struct MethodCall
 {
-    struct Expression *class_expression;
-    char *parent_class;
-    char *method_name;
+    struct Expression *type_expression;
+    struct TokenInfo *parent_class;
+    struct TokenInfo *name;
     struct ArrayList *parameters;
 };
 
 struct FunctionCall
 {
-    char *function_name;
-    struct ArrayList *parameters
+    struct TokenInfo *name;
+    struct ArrayList *parameters;
 };
 
 struct IfStatement
 {
     struct Expression *condition;
-    struct Expression *
+    struct Expression *true_branch;
+    struct Expression *false_branch;
 };
 
-struct ArrayList *parse(struct ArrayList *);
+struct WhileLoop
+{
+    struct Expression *condition;
+    struct Expression *body;
+};
+
+struct Block
+{
+    struct ArrayList *expression_list;
+};
+
+struct LetBlock
+{
+    struct ArrayList *declarations;
+    struct ArrayList *assignments;
+};
+
+struct CaseBlock
+{
+    struct Expression *condition;
+    struct ArrayList *declarations;
+    struct ArrayList *expressions;
+};
+
+struct NewObject
+{
+    struct TokenInfo *type;
+};
+
+struct BinaryOperation
+{
+    struct TokenInfo *_operator;
+    struct Expression *left_operand;
+    struct Expression *right_operand;
+};
+
+struct UnaryOperation
+{
+    struct TokenInfo *_operator;
+    struct Expression *expression;
+};
+
+struct ArrayList *parse(struct ArrayList *lex_list);
 
 #endif

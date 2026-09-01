@@ -8,16 +8,16 @@
 // Current Character
 char c;
 
-struct Lexeme *create_Lexeme(int program_line, enum TOKEN_NAME name)
+struct TokenInfo *create_token(int program_line, enum TOKEN name)
 {
-    struct Lexeme *t = malloc(sizeof(struct Lexeme));
+    struct TokenInfo *t = malloc(sizeof(struct TokenInfo));
     if (t == NULL)
     {
         printf("Malloc failed to allocate space\n");
         /* Change Number */ exit(1);
     }
     t->program_line = program_line;
-    t->token_literal = NULL;
+    t->lexeme = NULL;
     t->token_name = name;
     return t;
 }
@@ -32,8 +32,8 @@ int is_whitespace(char c)
     return i > NUMBER_OF_WHITESPACES;
 }
 
-// Creates an character array for the string lexeme
-void string_constant(FILE *source, struct Lexeme *lexeme)
+// Creates an character array for the string token
+void string_constant(FILE *source, struct TokenInfo *token)
 {
     struct ArrayList *string_literal;
     initialize_list(string_literal, sizeof(char));
@@ -63,8 +63,8 @@ void string_constant(FILE *source, struct Lexeme *lexeme)
     }
     append_list(string_literal, '\0');
     realloc_list(string_literal, string_literal->length);
-    lexeme->token_literal = (char *)string_literal->array;
-    lexeme->token_name = STRING;
+    token->lexeme = (char *)string_literal->array;
+    token->token_name = STRING;
     free(string_literal);
 }
 
@@ -89,7 +89,7 @@ void ignore_comment(FILE *source, int *current_program_line)
 // Creates a character array for the integer constant. Must be less than MAX_INTEGER
 // MAX_INTEGER is equivalent to the absolute value of the minimum negative integer because 
 // the lexer can't tell if the integer is negative or not
-void integer_constant(FILE *source, struct Lexeme *lexeme, int *current_program_line)
+void integer_constant(FILE *source, struct TokenInfo *token, int *current_program_line)
 {
     struct ArrayList *integer_constant;
     initialize_list(integer_constant, sizeof(char));
@@ -104,13 +104,13 @@ void integer_constant(FILE *source, struct Lexeme *lexeme, int *current_program_
     }
     ungetc(c, source);
     realloc_list(integer_constant, integer_constant->length);
-    lexeme->token_literal = (char *)integer_constant->array;
-    lexeme->token_name = INTEGER;
+    token->lexeme = (char *)integer_constant->array;
+    token->token_name = INTEGER;
     free(integer_constant);
 }
 
 // Creates a character array for a type constant.
-void type_constant(FILE *source, struct Lexeme *lexeme)
+void type_constant(FILE *source, struct TokenInfo *token)
 {
     struct ArrayList *type_string;
     initialize_list(type_string, sizeof(char));
@@ -121,13 +121,13 @@ void type_constant(FILE *source, struct Lexeme *lexeme)
     ungetc(c, source);
     append_list(type_string, '\0');
     realloc_list(type_string, type_string->length);
-    lexeme->token_literal = type_string->array;
-    lexeme->token_name = TYPE;
+    token->lexeme = type_string->array;
+    token->token_name = TYPE;
     free(type_string);
 }
 
 // Creates a character array for an idenitifer if its not a keyword
-void identifier_constant(FILE *source, struct Lexeme *lexeme)
+void identifier_constant(FILE *source, struct TokenInfo *token)
 {
     struct ArrayList *identifier_string;
     initialize_list(identifier_string, sizeof(char));
@@ -138,83 +138,83 @@ void identifier_constant(FILE *source, struct Lexeme *lexeme)
     ungetc(c, source);
     append_list(identifier_string, '\0');
     realloc_list(identifier_string, identifier_string->length);
-    lexeme->token_literal = (char *)identifier_string->array;
+    token->lexeme = (char *)identifier_string->array;
     // Check if identifier is actually a keyword
     switch (identifier_string->length)
     {
     case 3:
-        if (lexeme->token_literal[0] == 'i')
+        if (token->lexeme[0] == 'i')
         {
-            if (lexeme->token_literal[1] == 'f')
-                lexeme->token_name = IF;
-            else if (lexeme->token_literal[1] == 'n')
-                lexeme->token_name = IN;
+            if (token->lexeme[1] == 'f')
+                token->token_name = IF;
+            else if (token->lexeme[1] == 'n')
+                token->token_name = IN;
         }
-        else if (strncmp(lexeme->token_literal, "of", 2) == 0)
-            lexeme->token_name = OF;
-        else if (strncmp(lexeme->token_literal, "fi", 2) == 0)
-            lexeme->token_name = FI;
+        else if (strncmp(token->lexeme, "of", 2) == 0)
+            token->token_name = OF;
+        else if (strncmp(token->lexeme, "fi", 2) == 0)
+            token->token_name = FI;
         break;
     case 4:
-        if (strncmp(lexeme->token_literal, "let", 3) == 0)
-            lexeme->token_name = LET;
-        else if (lexeme->token_literal[0] == 'n')
+        if (strncmp(token->lexeme, "let", 3) == 0)
+            token->token_name = LET;
+        else if (token->lexeme[0] == 'n')
         {
-            if (strncmp(&lexeme->token_literal[1], "ew", 2) == 0)
-                lexeme->token_name = NEW;
-            else if (strncmp(&lexeme->token_literal[1], "ot", 2) == 0)
-                lexeme->token_name = NOT;
+            if (strncmp(&token->lexeme[1], "ew", 2) == 0)
+                token->token_name = NEW;
+            else if (strncmp(&token->lexeme[1], "ot", 2) == 0)
+                token->token_name = NOT;
         }
         break;
     case 5:
-        if (strncmp(lexeme->token_literal, "case", 4) == 0)
-            lexeme->token_name = CASE;
-        else if (lexeme->token_literal[0] == 'e')
+        if (strncmp(token->lexeme, "case", 4) == 0)
+            token->token_name = CASE;
+        else if (token->lexeme[0] == 'e')
         {
-            if (strncmp(&lexeme->token_literal[1], "lse", 3) == 0)
-                lexeme->token_name = ELSE;
-            else if (strncmp(&lexeme->token_literal[1], "sac", 3) == 0)
-                lexeme->token_name = ESAC;
+            if (strncmp(&token->lexeme[1], "lse", 3) == 0)
+                token->token_name = ELSE;
+            else if (strncmp(&token->lexeme[1], "sac", 3) == 0)
+                token->token_name = ESAC;
         }
-        else if (strncmp(lexeme->token_literal, "loop", 4))
-            lexeme->token_name = LOOP;
-        else if (lexeme->token_literal[0] == 't')
+        else if (strncmp(token->lexeme, "loop", 4))
+            token->token_name = LOOP;
+        else if (token->lexeme[0] == 't')
         {
-            if ((lexeme->token_literal[1] == 'r' || lexeme->token_literal[1] == 'R') &&
-                (lexeme->token_literal[2] == 'u' || lexeme->token_literal[2] == 'U') &&
-                (lexeme->token_literal[3] == 'e' || lexeme->token_literal[3] == 'E'))
-                lexeme->token_name = TRUE;
-            else if (strncmp(&lexeme->token_literal[1], "hen", 3) == 0)
-                lexeme->token_name = THEN;
+            if ((token->lexeme[1] == 'r' || token->lexeme[1] == 'R') &&
+                (token->lexeme[2] == 'u' || token->lexeme[2] == 'U') &&
+                (token->lexeme[3] == 'e' || token->lexeme[3] == 'E'))
+                token->token_name = TRUE;
+            else if (strncmp(&token->lexeme[1], "hen", 3) == 0)
+                token->token_name = THEN;
         }
-        else if (strncmp(lexeme->token_literal, "pool", 4) == 0)
-            lexeme->token_name = POOL;
+        else if (strncmp(token->lexeme, "pool", 4) == 0)
+            token->token_name = POOL;
         break;
     case 6:
-        if (strncmp(lexeme->token_literal, "class", 5) == 0)
-            lexeme->token_name = CLASS;
-        else if (lexeme->token_literal[0] == 'f' &&
-                 (lexeme->token_literal[1] == 'a' || lexeme->token_literal[1] == 'A') &&
-                 (lexeme->token_literal[2] == 'l' || lexeme->token_literal[2] == 'L') &&
-                 (lexeme->token_literal[3] == 's' || lexeme->token_literal[3] == 'S') &&
-                 (lexeme->token_literal[4] == 'e' || lexeme->token_literal[4] == 'E'))
-            lexeme->token_name = FALSE;
-        else if (strncmp(lexeme->token_literal, "while", 5) == 0)
-            lexeme->token_name = WHILE;
+        if (strncmp(token->lexeme, "class", 5) == 0)
+            token->token_name = CLASS;
+        else if (token->lexeme[0] == 'f' &&
+                 (token->lexeme[1] == 'a' || token->lexeme[1] == 'A') &&
+                 (token->lexeme[2] == 'l' || token->lexeme[2] == 'L') &&
+                 (token->lexeme[3] == 's' || token->lexeme[3] == 'S') &&
+                 (token->lexeme[4] == 'e' || token->lexeme[4] == 'E'))
+            token->token_name = FALSE;
+        else if (strncmp(token->lexeme, "while", 5) == 0)
+            token->token_name = WHILE;
         break;
     case 7:
-        if (strncmp(lexeme->token_literal, "isvoid", 6) == 0)
-            lexeme->token_name = ISVOID;
+        if (strncmp(token->lexeme, "isvoid", 6) == 0)
+            token->token_name = ISVOID;
         break;
     case 9:
-        if (strncmp(lexeme->token_literal, "inherits", 8) == 0)
-            lexeme->token_name = INHERITS;
+        if (strncmp(token->lexeme, "inherits", 8) == 0)
+            token->token_name = INHERITS;
     }
 
-    if (lexeme->token_name != IDENTIFIER)
+    if (token->token_name != IDENTIFIER)
     {
-        free(lexeme->token_literal);
-        lexeme->token_literal = NULL;
+        free(token->lexeme);
+        token->lexeme = NULL;
     }
     free(identifier_string);
 }
@@ -222,12 +222,12 @@ void identifier_constant(FILE *source, struct Lexeme *lexeme)
 struct ArrayList *lexer(FILE *source)
 {
     int current_program_line;
-    struct ArrayList *lexeme_list;
-    struct Lexeme *lexeme;
+    struct ArrayList *token_list;
+    struct TokenInfo *token;
 
     // Program File starts at line 1
     current_program_line = 1;
-    initialize_list(lexeme_list, sizeof(struct Lexeme *));
+    initialize_list(token_list, sizeof(struct TokenInfo *));
 
     while ((c = fgetc(source)) != EOF)
     {
@@ -240,44 +240,44 @@ struct ArrayList *lexer(FILE *source)
             current_program_line++;
             continue;
         }
-        lexeme = create_Lexeme(current_program_line, 0);
-        append_list(lexeme_list, lexeme);
+        token = create_token(current_program_line, 0);
+        append_list(token_list, token);
         switch (c)
         {
         // String Constant
         case '\"':
-            string_constant(source, lexeme);
+            string_constant(source, token);
             break;
 
         case '(':
             // Comment Case
             if ((c = fgetc(source)) == '*')
             {
-                free(lexeme);
-                lexeme_list->length -= 1;
+                free(token);
+                token_list->length -= 1;
                 ignore_comment(source, &current_program_line);
             }
             else
             {
-                lexeme->token_name = LPAREN;
+                token->token_name = LPAREN;
                 ungetc(c, source);
             }
             break;
 
         case ')':
-            lexeme->token_name = RPAREN;
+            token->token_name = RPAREN;
             break;
 
         case '*':
-            lexeme->token_name = MULTI;
+            token->token_name = MULTI;
             break;
 
         case '+':
-            lexeme->token_name = PLUS;
+            token->token_name = PLUS;
             break;
 
         case ',':
-            lexeme->token_name = COMMA;
+            token->token_name = COMMA;
             break;
 
         case '-':
@@ -286,46 +286,46 @@ struct ArrayList *lexer(FILE *source)
                 while ((c = fgetc(source)) != '\n' && c != EOF)
                     ;
             else
-                lexeme->token_name = MINUS;
+                token->token_name = MINUS;
             ungetc(c, source);
             break;
 
         case '.':
-            lexeme->token_name = DOT;
+            token->token_name = DOT;
             break;
 
         case '/':
-            lexeme->token_name = DIVISION;
+            token->token_name = DIVISION;
             break;
 
         // Integer Constant
         case '0' ... '9':
-            integer_constant(source, lexeme, &current_program_line);
+            integer_constant(source, token, &current_program_line);
             break;
 
         case ':':
-            lexeme->token_name = COLON;
+            token->token_name = COLON;
             break;
 
         case ';':
-            lexeme->token_name = SEMICOLON;
+            token->token_name = SEMICOLON;
             break;
 
         case '<':
-            lexeme->token_name = LTHAN;
+            token->token_name = LTHAN;
             switch (c = fgetc(source))
             {
             // Left Arrow Symbol ( <- )
             case '-':
-                lexeme->token_name = LARROW;
+                token->token_name = LARROW;
                 break;
             // Less Than or Equal to Symbol ( <= )
             case '=':
-                lexeme->token_name = LEQUAL;
+                token->token_name = LEQUAL;
                 break;
             // Less Than Symbol ( < )
             default:
-                lexeme->token_name = LTHAN;
+                token->token_name = LTHAN;
                 ungetc(c, source);
             }
             break;
@@ -333,11 +333,11 @@ struct ArrayList *lexer(FILE *source)
         case '=':
             // Right Arrow Symbol or Greater Than or Equal Sign ( => )
             if ((c = fgetc(source)) == '>')
-                lexeme->token_name = RARROW;
+                token->token_name = RARROW;
             // Equals Symbol
             else
             {
-                lexeme->token_name = EQUALS;
+                token->token_name = EQUALS;
                 ungetc(c, source);
             }
             break;
@@ -345,42 +345,42 @@ struct ArrayList *lexer(FILE *source)
         case '>':
             // Greater Than or Equal Sign
             if ((c = fgetc(source)) == '=')
-                lexeme->token_name = GEQUAL;
+                token->token_name = GEQUAL;
             // Greater Than Sign
             else
             {
-                lexeme->token_name = GTHAN;
+                token->token_name = GTHAN;
                 ungetc(c, source);
             }
             break;
 
         case '@':
-            lexeme->token_name = AT;
+            token->token_name = AT;
             break;
 
         // Type Symbols
         case 'A' ... 'Z':
-            type_constant(source, lexeme);
+            type_constant(source, token);
             break;
 
         // Identifiers
         case 'a' ... 'z':
-            identifier_constant(source, lexeme);
+            identifier_constant(source, token);
             break;
 
         // Left Bracket Symbol
         case '{':
-            lexeme->token_name = LBRACKET;
+            token->token_name = LBRACKET;
             break;
 
         // Right Bracket Symbol
         case '}':
-            lexeme->token_name = RBRACKET;
+            token->token_name = RBRACKET;
             break;
 
         // Integer Complement Symbol
         case '~':
-            lexeme->token_name = INTCOMPLEMENT;
+            token->token_name = INTCOMPLEMENT;
             break;
 
         // Unidentified Character
@@ -389,6 +389,6 @@ struct ArrayList *lexer(FILE *source)
             /* Change Numebr */ exit(1);
         }
     }
-    realloc_list(lexeme_list, lexeme_list->length);
-    return lexeme_list;
+    realloc_list(token_list, token_list->length);
+    return token_list;
 };

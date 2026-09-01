@@ -51,11 +51,11 @@ const char *const token_to_string[] = {
 void print_lex(FILE *out, struct ArrayList *lex_array)
 {
     int i = 0;
-    struct LexInfo *lex_tokens = lex_array->array;
+    struct TokenInfo *lex_tokens = lex_array->array;
     for (int i = 0; i < lex_array->length; i++)
     {
         fprintf(out, "%d\n%s\n", lex_tokens[i].program_line, token_to_string[lex_tokens[i].token_name]);
-        if (lex_tokens[i].token_literal != NULL)
-            fprintf(out, "%s\n", lex_tokens[i].token_literal);
+        if (lex_tokens[i].lexeme != NULL)
+            fprintf(out, "%s\n", lex_tokens[i].lexeme);
     }
 }

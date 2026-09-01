@@ -1,7 +1,7 @@
 #ifndef token_h
 #define token_h
 
-enum TOKEN_NAME
+enum TOKEN
 {
     AT,
     CASE,
@@ -47,6 +47,13 @@ enum TOKEN_NAME
     TRUE,
     TYPE,
     WHILE
+};
+
+struct TokenInfo
+{
+    char *lexeme;
+    enum TOKEN token_name;
+    int program_line;
 };
 
 #endif
